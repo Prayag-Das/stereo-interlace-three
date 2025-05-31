@@ -274,11 +274,17 @@ function updateCameraControls() {
   const speed = 0.05;
   const direction = new THREE.Vector3();
   if (keys["KeyW"]) direction.z -= speed;
+  if (keys["KeyW"] && keys["KeyE"]) direction.z -= speed * 4;
   if (keys["KeyS"]) direction.z += speed;
+  if (keys["KeyS"] && keys["KeyE"]) direction.z += speed * 4;
   if (keys["KeyA"]) direction.x -= speed;
+  if (keys["KeyA"] && keys["KeyE"]) direction.x -= speed * 4;
   if (keys["KeyD"]) direction.x += speed;
+  if (keys["KeyD"] && keys["KeyE"]) direction.x += speed * 4;
   if (keys["Space"]) direction.y += speed;
+  if (keys["Space"] && keys["KeyE"]) direction.y += speed * 4;
   if (keys["ShiftLeft"] || keys["ShiftRight"]) direction.y -= speed;
+  if ((keys["ShiftLeft"] && keys["KeyE"]) || (keys["ShiftRight"] && keys["KeyE"])) direction.y -= speed * 4;
   stereo.cameraGroup.translateX(direction.x);
   stereo.cameraGroup.translateY(direction.y);
   stereo.cameraGroup.translateZ(direction.z);
