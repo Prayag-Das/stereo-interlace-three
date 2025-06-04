@@ -29,8 +29,11 @@ class StereoInterlacer {
       1000
     );
     // Slight horizontal offset for stereoscopic effect
-    this.leftCamera.position.set(-0.03, 0, 5);
-    this.rightCamera.position.set(0.03, 0, 5);
+    /*this.leftCamera.position.set(-0.03, 0, 5);
+    this.rightCamera.position.set(0.03, 0, 5);*/
+
+    this.leftCamera.position.set(-0.03, 10, 30);
+    this.rightCamera.position.set(0.03, 10, 30);
 
     // Group cameras so they move/rotate together
     this.cameraGroup = new THREE.Group();
@@ -269,22 +272,25 @@ renderer.domElement.addEventListener("mousemove", (e) => {
   }
 });
 
-// Function to translate camera group based on WASD + space/shift
+// Function to translate camera group based on WASD + space/shift + F for speed + Q/E if rotation
 function updateCameraControls() {
   const speed = 0.05;
+  const rotationSpeed = 0.02;
   const direction = new THREE.Vector3();
   if (keys["KeyW"]) direction.z -= speed;
-  if (keys["KeyW"] && keys["KeyE"]) direction.z -= speed * 4;
+  if (keys["KeyW"] && keys["KeyF"]) direction.z -= speed * 5;
   if (keys["KeyS"]) direction.z += speed;
-  if (keys["KeyS"] && keys["KeyE"]) direction.z += speed * 4;
+  if (keys["KeyS"] && keys["KeyF"]) direction.z += speed * 5;
   if (keys["KeyA"]) direction.x -= speed;
-  if (keys["KeyA"] && keys["KeyE"]) direction.x -= speed * 4;
+  if (keys["KeyA"] && keys["KeyF"]) direction.x -= speed * 5;
   if (keys["KeyD"]) direction.x += speed;
-  if (keys["KeyD"] && keys["KeyE"]) direction.x += speed * 4;
+  if (keys["KeyD"] && keys["KeyF"]) direction.x += speed * 5;
   if (keys["Space"]) direction.y += speed;
-  if (keys["Space"] && keys["KeyE"]) direction.y += speed * 4;
+  if (keys["Space"] && keys["KeyF"]) direction.y += speed * 5;
   if (keys["ShiftLeft"] || keys["ShiftRight"]) direction.y -= speed;
-  if ((keys["ShiftLeft"] && keys["KeyE"]) || (keys["ShiftRight"] && keys["KeyE"])) direction.y -= speed * 4;
+  if ((keys["ShiftLeft"] && keys["KeyF"]) || (keys["ShiftRight"] && keys["KeyF"])) direction.y -= speed * 4;
+  if (keys["KeyQ"]) stereo.cameraGroup.rotateZ(rotationSpeed);
+  if (keys["KeyE"]) stereo.cameraGroup.rotateZ(-rotationSpeed);
   stereo.cameraGroup.translateX(direction.x);
   stereo.cameraGroup.translateY(direction.y);
   stereo.cameraGroup.translateZ(direction.z);

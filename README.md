@@ -49,9 +49,9 @@ Our project uses ES modules (`"type": "module"`) and Vite as the dev server and 
 ## Controls
 
 - **Mouse drag**: Orbit the camera
-- **W / A / S / D**: Move forward / left / back / right *(Combine with **E** for fast movement)*
-- **Space / Shift**: Move camera up / down *(Combine with **E** for fast movement)*
-
+- **W / A / S / D**: Move forward / left / back / right *(Combine with **F** for fast movement)*
+- **Space / Shift**: Move camera up / down *(Combine with **F** for fast movement)*
+- **Q / E**: Rotate camera counterclockwise / clockwise
 ---
 
 ## Responsive Resize
