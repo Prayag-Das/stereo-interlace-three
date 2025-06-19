@@ -17,23 +17,24 @@ class StereoInterlacer {
 
     // Create two perspective cameras for left and right eye
     this.leftCamera = new THREE.PerspectiveCamera(
-      75, // Field of view
-      window.innerWidth / window.innerHeight, // Aspect ratio
-      0.1, // Near clipping plane
-      1000 // Far clipping plane
+        75, // Field of view
+        window.innerWidth / window.innerHeight, // Aspect ratio
+        0.1, // Near clipping plane
+        1000 // Far clipping plane
     );
     this.rightCamera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
     );
-    // Slight horizontal offset for stereoscopic effect
-    /*this.leftCamera.position.set(-0.03, 0, 5);
-    this.rightCamera.position.set(0.03, 0, 5);*/
 
-    this.leftCamera.position.set(-0.03, 10, 30);
-    this.rightCamera.position.set(0.03, 10, 30);
+    // Initial camera positions
+    const initialLeftCamPos = new THREE.Vector3(-0.03, 10, 30);
+    const initialRightCamPos = new THREE.Vector3(0.03, 10, 30);
+
+    this.leftCamera.position.copy(initialLeftCamPos);
+    this.rightCamera.position.copy(initialRightCamPos);
 
     // Group cameras so they move/rotate together
     this.cameraGroup = new THREE.Group();
@@ -41,21 +42,33 @@ class StereoInterlacer {
     this.cameraGroup.add(this.rightCamera);
     this.scene.add(this.cameraGroup);
 
-    // Track rotation angles
-    this.pitch = 0;
-    this.yaw = 0;
+    // Store initial camera group position and rotation state
+    this.initialCameraGroupPosition = new THREE.Vector3().copy(this.cameraGroup.position);
+    this.initialPitch = 0; // Initial X-axis rotation
+    this.initialYaw = 0;   // Initial Y-axis rotation
+    this.initialRoll = 0;  // Initial Z-axis rotation
+
+    // Track current rotation angles for pitch (X), yaw (Y), and roll (Z)
+    this.pitch = this.initialPitch;
+    this.yaw = this.initialYaw;
+    this.roll = this.initialRoll;
+
+    // Flag to manage gimbal lock behavior for Euler angles
+    // Set to true if you experience issues with rotations becoming locked
+    // or prefer a specific Euler order. False uses Quaternions.
+    this.gimbalLock = false;
 
     // Toggle for horizontal/vertical interlace
     this.isHorizontal = true;
 
     // Create off-screen render targets for each eye
     this.leftRenderTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
+        window.innerWidth,
+        window.innerHeight
     );
     this.rightRenderTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
+        window.innerWidth,
+        window.innerHeight
     );
 
     // Set up post-processing composer
@@ -115,17 +128,61 @@ class StereoInterlacer {
   }
 
   /**
-   * Rotate camera group based on pointer movement
-   * @param {number} dx - Delta x movement
-   * @param {number} dy - Delta y movement
+   * Update camera rotation based on pitch, yaw, and roll deltas.
+   * This method now takes deltas for each axis.
+   * @param {number} deltaX - Change in X-axis (affects yaw)
+   * @param {number} deltaY - Change in Y-axis (affects pitch)
+   * @param {number} deltaZ - Change in Z-axis (affects roll)
    */
-  updateCameraRotation(dx, dy) {
-    // Adjust yaw and pitch with sensitivity factor
-    this.yaw -= dx * 0.002;
-    this.pitch -= dy * 0.002;
+  updateCameraRotation(deltaX, deltaY, deltaZ = 0) {
+    this.yaw -= deltaX;   // Apply deltaX to yaw (e.g., from mouse movement in X)
+    this.pitch -= deltaY; // Apply deltaY to pitch (e.g., from mouse movement in Y)
+    this.roll += deltaZ;  // Apply deltaZ to roll (e.g., from keyboard Q/E)
+
     // Clamp pitch to avoid flipping upside down
     this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
-    this.cameraGroup.rotation.set(this.pitch, this.yaw, 0);
+
+    // Apply rotations
+    if (this.gimbalLock) {
+      this.cameraGroup.rotation.set(this.pitch, this.yaw, this.roll, 'YXZ');
+    } else {
+      const quaternion = new THREE.Quaternion();
+      const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+      const pitchQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.pitch);
+      const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), this.roll);
+
+      quaternion.multiplyQuaternions(yawQuat, pitchQuat);
+      quaternion.multiplyQuaternions(quaternion, rollQuat);
+
+      this.cameraGroup.setRotationFromQuaternion(quaternion);
+    }
+  }
+
+  /**
+   * Resets the camera to its initial position and rotation.
+   */
+  resetCamera() {
+    // Reset position
+    this.cameraGroup.position.copy(this.initialCameraGroupPosition);
+
+    // Reset rotation angles
+    this.pitch = this.initialPitch;
+    this.yaw = this.initialYaw;
+    this.roll = this.initialRoll;
+
+    // Apply the reset rotation
+    if (this.gimbalLock) {
+      this.cameraGroup.rotation.set(this.pitch, this.yaw, this.roll, 'YXZ');
+    } else {
+      const quaternion = new THREE.Quaternion();
+      const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+      const pitchQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.pitch);
+      const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), this.roll);
+
+      quaternion.multiplyQuaternions(yawQuat, pitchQuat);
+      quaternion.multiplyQuaternions(quaternion, rollQuat);
+      this.cameraGroup.setRotationFromQuaternion(quaternion);
+    }
   }
 
   /**
@@ -145,8 +202,8 @@ class StereoInterlacer {
     this.tintPass.uniforms.leftTexture.value = this.leftRenderTarget.texture;
     this.tintPass.uniforms.rightTexture.value = this.rightRenderTarget.texture;
     this.tintPass.uniforms.resolution.value.set(
-      window.innerWidth,
-      window.innerHeight
+        window.innerWidth,
+        window.innerHeight
     );
 
     // Run composer to apply shader
@@ -168,20 +225,20 @@ class StereoInterlacer {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.composer.setSize(window.innerWidth, window.innerHeight);
     this.tintPass.uniforms.resolution.value.set(
-      window.innerWidth,
-      window.innerHeight
+        window.innerWidth,
+        window.innerHeight
     );
 
     // Recreate render targets at new size
     this.leftRenderTarget.dispose();
     this.rightRenderTarget.dispose();
     this.leftRenderTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
+        window.innerWidth,
+        window.innerHeight
     );
     this.rightRenderTarget = new THREE.WebGLRenderTarget(
-      window.innerWidth,
-      window.innerHeight
+        window.innerWidth,
+        window.innerHeight
     );
   }
 }
@@ -222,15 +279,15 @@ scene.add(sunLight);
 // Load a GLB model of the ISS
 const gltfLoader = new GLTFLoader();
 gltfLoader.load(
-  "/models/ISS_stationary.glb",
-  (gltf) => {
-    scene.add(gltf.scene);
-    gltf.scene.position.set(0, 0, 0);
-  },
-  undefined,
-  (error) => {
-    console.error("Error loading GLB model:", error);
-  }
+    "/models/ISS_stationary.glb",
+    (gltf) => {
+      scene.add(gltf.scene);
+      gltf.scene.position.set(0, 0, 0);
+    },
+    undefined,
+    (error) => {
+      console.error("Error loading GLB model:", error);
+    }
 );
 
 // Create a UI button to toggle interlace direction
@@ -245,30 +302,37 @@ button.addEventListener("click", () => stereo.toggleInterlaceDirection());
 
 // Handle keyboard input for moving the camera
 const keys = {};
-window.addEventListener("keydown", (e) => (keys[e.code] = true));
+
+// Handle keyboard input for resetting camera position
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (e.code === 'KeyR') {
+    stereo.resetCamera();
+  }
+});
 window.addEventListener("keyup", (e) => (keys[e.code] = false));
 
-// Variables to track mouse dragging for rotation
-let isMouseDown = false;
-let lastX = 0;
-let lastY = 0;
+// Variables for pointer lock and mouse movement
+let isPointerLocked = false;
+let mouseRotationSensitivity = 0.002;
 
-// Mouse events to control camera orientation
-renderer.domElement.addEventListener("mousedown", (e) => {
-  isMouseDown = true;
-  lastX = e.clientX;
-  lastY = e.clientY;
+// Request pointer lock on canvas click
+renderer.domElement.addEventListener("click", () => {
+  renderer.domElement.requestPointerLock();
 });
-renderer.domElement.addEventListener("mouseup", () => {
-  isMouseDown = false;
+
+// Event listener for pointer lock change
+document.addEventListener("pointerlockchange", () => {
+  isPointerLocked = document.pointerLockElement === renderer.domElement;
 });
-renderer.domElement.addEventListener("mousemove", (e) => {
-  if (isMouseDown) {
-    const dx = e.clientX - lastX;
-    const dy = e.clientY - lastY;
-    stereo.updateCameraRotation(dx, dy);
-    lastX = e.clientX;
-    lastY = e.clientY;
+
+// Mouse movement event listener
+document.addEventListener("mousemove", (e) => {
+  if (isPointerLocked) {
+    const dx = e.movementX || e.mozMovementX || e.webkitMovementX || 0;
+    const dy = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
+
+    stereo.updateCameraRotation(dx * mouseRotationSensitivity, dy * mouseRotationSensitivity, 0);
   }
 });
 
@@ -276,6 +340,7 @@ renderer.domElement.addEventListener("mousemove", (e) => {
 function updateCameraControls() {
   const speed = 0.05;
   const rotationSpeed = 0.02;
+
   const direction = new THREE.Vector3();
   if (keys["KeyW"]) direction.z -= speed;
   if (keys["KeyW"] && keys["KeyF"]) direction.z -= speed * 5;
@@ -289,8 +354,13 @@ function updateCameraControls() {
   if (keys["Space"] && keys["KeyF"]) direction.y += speed * 5;
   if (keys["ShiftLeft"] || keys["ShiftRight"]) direction.y -= speed;
   if ((keys["ShiftLeft"] && keys["KeyF"]) || (keys["ShiftRight"] && keys["KeyF"])) direction.y -= speed * 4;
-  if (keys["KeyQ"]) stereo.cameraGroup.rotateZ(rotationSpeed);
-  if (keys["KeyE"]) stereo.cameraGroup.rotateZ(-rotationSpeed);
+
+  if (keys["KeyQ"]) stereo.updateCameraRotation(0, 0, rotationSpeed);
+  if (keys["KeyE"]) stereo.updateCameraRotation(0, 0, -rotationSpeed);
+
+  if (keys["KeyZ"]) stereo.updateCameraRotation(rotationSpeed, 0, 0);
+  if (keys["KeyC"]) stereo.updateCameraRotation(-rotationSpeed, 0, 0);
+
   stereo.cameraGroup.translateX(direction.x);
   stereo.cameraGroup.translateY(direction.y);
   stereo.cameraGroup.translateZ(direction.z);
