@@ -52,6 +52,7 @@ Our project uses ES modules (`"type": "module"`) and Vite as the dev server and 
 - **W / A / S / D**: Move forward / left / back / right *(Combine with **F** for fast movement)*
 - **Space / Shift**: Move camera up / down *(Combine with **F** for fast movement)*
 - **Q / E**: Rotate camera counterclockwise / clockwise
+- **Z / C**: Rotate camera around y-axis
 - **R**: Reset camera position and rotation
 ---
 
