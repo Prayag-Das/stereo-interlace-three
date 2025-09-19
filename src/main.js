@@ -377,6 +377,7 @@ class App {
     this.isMouseDown = false;
     this.lastX = 0;
     this.lastY = 0;
+    this.movementSpeed = 0.05; // Default speed value
 
     this.init();
   }
@@ -519,10 +520,93 @@ class App {
     document.body.appendChild(button);
     button.addEventListener("click", () => this.stereo.toggleInterlaceDirection());
 
+    // Create speed control slider
+    const speedContainer = document.createElement('div');
+    speedContainer.style.cssText = `
+      position: absolute; top: 60px; left: 10px; z-index: 1000;
+      background: rgba(0, 0, 0, 0.7); border-radius: 6px; padding: 15px;
+      backdrop-filter: blur(10px); min-width: 200px;
+    `;
+
+    const speedLabel = document.createElement('label');
+    speedLabel.textContent = 'Movement Speed';
+    speedLabel.style.cssText = `
+      display: block; color: white; font-size: 12px; font-weight: 500;
+      margin-bottom: 8px;
+    `;
+
+    const speedSlider = document.createElement('input');
+    speedSlider.type = 'range';
+    speedSlider.min = '0.01';
+    speedSlider.max = '0.2';
+    speedSlider.step = '0.01';
+    speedSlider.value = this.movementSpeed.toString();
+    speedSlider.id = 'speed-slider';
+    speedSlider.style.cssText = `
+      width: 100%; height: 20px; background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px; outline: none; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+    `;
+
+    // Add custom slider styling
+    const style = document.createElement('style');
+    style.textContent = `
+      #speed-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #667eea;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      }
+      #speed-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #667eea;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      }
+    `;
+    document.head.appendChild(style);
+
+    const speedValue = document.createElement('span');
+    speedValue.textContent = `${Math.round(this.movementSpeed / 0.05 * 100)}%`;
+    speedValue.style.cssText = `
+      color: rgba(255, 255, 255, 0.8); font-size: 11px; float: right;
+      margin-top: 5px; display: block;
+    `;
+
+    // Use both 'input' and 'change' events for better compatibility
+    const updateSpeed = (e) => {
+      const newSpeed = parseFloat(e.target.value);
+      console.log('Slider event fired! Old speed:', this.movementSpeed, 'New speed:', newSpeed);
+      this.movementSpeed = newSpeed;
+      speedValue.textContent = `${Math.round(newSpeed / 0.05 * 100)}%`;
+      console.log('Speed updated to:', this.movementSpeed);
+    };
+
+    speedSlider.addEventListener('input', updateSpeed);
+    speedSlider.addEventListener('change', updateSpeed);
+
+    // Test the slider is working by adding a click test
+    speedSlider.addEventListener('mousedown', () => {
+      console.log('Slider clicked, current value:', speedSlider.value);
+    });
+
+    speedContainer.appendChild(speedLabel);
+    speedContainer.appendChild(speedSlider);
+    speedContainer.appendChild(speedValue);
+    document.body.appendChild(speedContainer);
+
     // Create controls info panel
     const controlsInfo = document.createElement('div');
     controlsInfo.style.cssText = `
-      position: fixed; top: 60px; left: 10px; background: rgba(0, 0, 0, 0.7);
+      position: fixed; top: 140px; left: 10px; background: rgba(0, 0, 0, 0.7);
       color: white; padding: 15px; border-radius: 8px; font-size: 12px;
       z-index: 1001; backdrop-filter: blur(10px); max-width: 250px;
     `;
@@ -530,7 +614,7 @@ class App {
       <strong>Controls:</strong><br>
       WASD - Move around<br>
       Space/Shift - Up/Down<br>
-      F + Movement - Fast mode<br>
+      F + Movement - Fast mode (5x)<br>
       Mouse drag - Look around<br>
       Q/E - Roll camera<br>
       Z/C - Pitch adjust<br>
